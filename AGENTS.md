@@ -11,3 +11,4 @@ When implementing from a selected generated mock, treat that image as the source
 - Build target: `/workspace/scratch/0127361d9628/generated_images/exec-603e8a6b-c9d4-43f0-a6d5-9c3d0d5d13d8.png`.
 - Combine the executive sidebar and portfolio table, analyst workbench health/forecast panel, and decision-focused quality operations brief.
 - Preserve MigrateQA's estimation, applications, time logging, insights, team settings, data export/import, and responsive behavior.
+- Brand identity: use the navy, indigo, and emerald migration/checkmark mark in `public/migrateqa-logo.png` for the product logo and favicon family.

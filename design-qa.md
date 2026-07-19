@@ -73,4 +73,11 @@ No actionable P0, P1, or P2 differences remain in the desktop design target.
 
 - Run a physical-device or supported 390 × 844 browser capture when a mobile viewport-capable browser surface is available.
 
+## Brand Asset Follow-up
+
+- Final logo asset: `public/migrateqa-logo.png` (transparent 1024 × 1024 master).
+- Favicon assets: `public/favicon.ico`, `public/favicon-32x32.png`, `public/favicon-16x16.png`, and `public/apple-touch-icon.png`.
+- Browser-rendered implementation: `qa/logo-final.jpg` at 1348 × 926.
+- Result: passed. The mark is visually distinct on the navy sidebar, remains legible in the compact mobile brand treatment, loads at its full 1024 px intrinsic size, and is supported by dedicated 16 px, 32 px, 64 px, and 180 px browser/app icon outputs.
+
 final result: passed

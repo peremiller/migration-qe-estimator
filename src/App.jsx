@@ -202,8 +202,13 @@ function formatDate(value) {
 function AppLogo({ compact = false }) {
   return (
     <div className={`brand ${compact ? "brand-compact" : ""}`}>
-      <div className="brand-name">Migrate<span>QA</span></div>
-      {!compact && <div className="brand-subtitle">Data Migration<br />QA Estimation & Tracking</div>}
+      <span className="brand-mark" aria-hidden="true">
+        <img src="/migrateqa-logo.png" alt="" />
+      </span>
+      <div className="brand-copy">
+        <div className="brand-name">Migrate<span>QA</span></div>
+        {!compact && <div className="brand-subtitle">Data Migration<br />QA Estimation & Tracking</div>}
+      </div>
     </div>
   );
 }

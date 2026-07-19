@@ -95,12 +95,35 @@ p {
   min-height: 120px;
   padding: 24px 20px 19px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.brand-mark img {
+  width: 42px;
+  height: 42px;
+  display: block;
+  object-fit: contain;
+}
+
+.brand-copy {
+  min-width: 0;
 }
 
 .brand-name {
-  font-size: 25px;
+  font-size: 23px;
   font-weight: 700;
   letter-spacing: -0.8px;
   line-height: 1.1;
@@ -112,9 +135,9 @@ p {
 
 .brand-subtitle {
   color: #d5deea;
-  font-size: 12.5px;
-  line-height: 1.55;
-  margin-top: 10px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  margin-top: 6px;
 }
 
 .side-nav {
@@ -1555,10 +1578,23 @@ button.table-row {
     min-height: 0;
     padding: 0;
     color: var(--text);
+    gap: 8px;
   }
 
   .brand-compact .brand-name {
     font-size: 21px;
+  }
+
+  .brand-compact .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.12);
+  }
+
+  .brand-compact .brand-mark img {
+    width: 32px;
+    height: 32px;
   }
 
   .mobile-topbar .icon-button {
