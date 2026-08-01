@@ -97,6 +97,9 @@ const defaultApps = [
     source: "CRM",
     target: "Salesforce",
     description: "Accounts, contacts & 1.2M activity records",
+    testPhase: "SIT",
+    startDate: "2026-08-03",
+    endDate: "2026-09-25",
     complexity: "High",
     multiplier: 1.2,
     estimate: 198.7,
@@ -111,6 +114,9 @@ const defaultApps = [
     source: "HR Legacy DB",
     target: "Workday",
     description: "Employee master + payroll history",
+    testPhase: "UAT",
+    startDate: "2026-09-01",
+    endDate: "2026-10-30",
     complexity: "Medium",
     multiplier: 1,
     estimate: 114.6,
@@ -125,6 +131,9 @@ const defaultApps = [
     source: "Billing",
     target: "SAP S/4HANA",
     description: "Open items, tax data, 7yr archive",
+    testPhase: "Regression",
+    startDate: "2026-10-05",
+    endDate: "2026-12-18",
     complexity: "Very High",
     multiplier: 1.4,
     estimate: 328.4,
@@ -198,6 +207,10 @@ function formatHours(value) {
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatScheduleDate(value) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T12:00:00`));
 }
 
 function AppLogo({ compact = false }) {
@@ -294,6 +307,7 @@ function Metric({ icon: Icon, tone, label, value, detail }) {
 }
 
 function MigrationIcon({ app }) {
+  if (app.logo) return <div className="migration-logo custom"><img src={app.logo} alt="" /></div>;
   if (app.id === "billing") return <div className="migration-logo sap"><SiSap size={35} /></div>;
   if (app.id === "crm") return <div className="migration-logo salesforce"><Cloud size={25} weight="fill" /></div>;
   return <div className="migration-logo database"><Database size={25} weight="fill" /></div>;
@@ -444,10 +458,13 @@ function ApplicationsPage({ apps, entries, onAdd, onEdit, onDelete }) {
           return (
             <article className="application-card" key={app.id}>
               <div className="app-card-main">
-                <MigrationIcon app={app} />
-                <div className="app-card-title"><h2>{appName(app)}</h2><p>{app.description}</p></div>
+                <button className="application-logo-button" onClick={() => onEdit(app)} aria-label={`Update logo for ${appName(app)}`}>
+                  <MigrationIcon app={app} />
+                  <span><PencilSimple size={12} weight="bold" /></span>
+                </button>
+                <div className="app-card-title"><h2>{appName(app)}</h2><p>{app.description}</p>{(app.startDate || app.endDate) && <span className="app-date-range"><CalendarBlank size={13} />{app.startDate ? formatScheduleDate(app.startDate) : "Not scheduled"} – {app.endDate ? formatScheduleDate(app.endDate) : "Open ended"}</span>}</div>
               </div>
-              <div className="app-card-badges"><span className={`complexity ${app.complexity.toLowerCase().replace(" ", "-")}`}>{app.complexity} ×{app.multiplier.toFixed(1)}</span><span className="status-chip"><span />On track</span></div>
+              <div className="app-card-badges"><span className="phase-chip">{app.testPhase || "SIT"}</span><span className={`complexity ${app.complexity.toLowerCase().replace(" ", "-")}`}>{app.complexity} ×{app.multiplier.toFixed(1)}</span><span className="status-chip"><span />On track</span></div>
               <div className="app-card-stats"><div><span>Logged</span><strong>{formatHours(logged)}</strong></div><div><span>Estimate</span><strong>{formatHours(app.estimate)}</strong></div><div><span>95% ceiling</span><strong>{formatHours(app.ceiling)}</strong></div><div><span>Variance</span><strong className="positive">{app.variance}%</strong></div></div>
               <div className="app-progress"><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><strong>{progress}% consumed</strong></div>
               <div className="card-actions"><button className="button secondary" onClick={() => onEdit(app)}><PencilSimple size={17} /> Edit</button><button className="icon-button danger" onClick={() => onDelete(app)} aria-label={`Delete ${appName(app)}`}><Trash size={18} /></button></div>
@@ -463,11 +480,12 @@ function PageHeader({ kicker, title, description, action }) {
   return <div className="page-header"><div><span className="section-kicker">{kicker}</span><h1>{title}</h1><p>{description}</p></div>{action}</div>;
 }
 
-function TimeLogPage({ apps, entries, team, onLog, onEdit, onDelete, onExport }) {
+function TimeLogPage({ apps, entries, team, onLog, onEdit, onBulkEdit, onDelete, onDeleteSelected, onExport }) {
   const [appFilter, setAppFilter] = useState("all");
   const [activityFilter, setActivityFilter] = useState("all");
   const [testerFilter, setTesterFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
   const filtered = entries.filter((entry) => {
     const app = apps.find((candidate) => candidate.id === entry.appId);
     return (appFilter === "all" || entry.appId === appFilter)
@@ -476,6 +494,20 @@ function TimeLogPage({ apps, entries, team, onLog, onEdit, onDelete, onExport })
       && `${entry.note} ${entry.tester} ${app ? appName(app) : ""}`.toLowerCase().includes(query.toLowerCase());
   });
   const total = filtered.reduce((sum, entry) => sum + Number(entry.hours), 0);
+  const selectedEntries = entries.filter((entry) => selectedIds.includes(entry.id));
+  const allVisibleSelected = filtered.length > 0 && filtered.every((entry) => selectedIds.includes(entry.id));
+  const toggleRow = (id) => setSelectedIds((current) => current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]);
+  const toggleAllVisible = () => {
+    const visibleIds = filtered.map((entry) => entry.id);
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
+  };
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => entries.some((entry) => entry.id === id)));
+  }, [entries]);
+
   return (
     <div className="page standard-page">
       <PageHeader kicker="Effort tracking" title="Time log" description="Review actual effort, filter activity, and keep migration work auditable." action={<button className="button primary" onClick={onLog}><Plus size={18} /> Log time</button>} />
@@ -486,11 +518,22 @@ function TimeLogPage({ apps, entries, team, onLog, onEdit, onDelete, onExport })
         <select value={testerFilter} onChange={(e) => setTesterFilter(e.target.value)}><option value="all">All testers</option>{team.map((tester) => <option key={tester}>{tester}</option>)}</select>
         <button className="button secondary" onClick={onExport}><DownloadSimple size={17} /> CSV</button>
       </div>
+      {selectedIds.length > 0 && (
+        <div className="selection-toolbar" role="region" aria-label="Selected time entry actions">
+          <div><strong>{selectedIds.length} selected</strong><span>{selectedIds.length === 1 ? "Edit the selected entry or remove it." : "Apply a shared update or delete the selected entries."}</span></div>
+          <div className="selection-actions">
+            <button className="button secondary" onClick={() => selectedIds.length === 1 ? onEdit(selectedEntries[0]) : onBulkEdit(selectedIds)}><PencilSimple size={17} /> Edit selected</button>
+            <button className="button danger-button" onClick={() => onDeleteSelected(selectedIds)}><Trash size={17} /> Delete selected</button>
+            <button className="text-button" onClick={() => setSelectedIds([])}>Clear</button>
+          </div>
+        </div>
+      )}
       <div className="data-table time-table">
-        <div className="time-grid table-head"><span>Date</span><span>Application</span><span>Activity</span><span>Tester</span><span>Hours</span><span>Note</span><span /></div>
+        <div className="time-grid table-head"><label className="row-checkbox"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} aria-label="Select all visible time entries" /></label><span>Date</span><span>Application</span><span>Activity</span><span>Tester</span><span>Hours</span><span>Note</span><span /></div>
         {filtered.map((entry) => {
           const app = apps.find((candidate) => candidate.id === entry.appId);
-          return <div className="time-grid table-row" key={entry.id}><span>{formatDate(entry.date)}</span><strong>{app ? appName(app) : "Removed app"}</strong><span>{activityShort[entry.activity] || entry.activity}</span><span>{entry.tester || "Unassigned"}</span><strong>{entry.hours}</strong><span className="note-cell">{entry.note || "—"}</span><span className="row-actions"><button className="icon-button" onClick={() => onEdit(entry)} aria-label="Edit entry"><PencilSimple size={17} /></button><button className="icon-button danger" onClick={() => onDelete(entry.id)} aria-label="Delete entry"><Trash size={17} /></button></span></div>;
+          const selected = selectedIds.includes(entry.id);
+          return <div className={`time-grid table-row${selected ? " is-selected" : ""}`} key={entry.id}><label className="row-checkbox"><input type="checkbox" checked={selected} onChange={() => toggleRow(entry.id)} aria-label={`Select ${app ? appName(app) : "removed application"} entry from ${formatDate(entry.date)}`} /></label><span>{formatDate(entry.date)}</span><strong>{app ? appName(app) : "Removed app"}</strong><span>{activityShort[entry.activity] || entry.activity}</span><span>{entry.tester || "Unassigned"}</span><strong>{entry.hours}</strong><span className="note-cell">{entry.note || "—"}</span><span className="row-actions"><button className="icon-button" onClick={() => onEdit(entry)} aria-label="Edit entry"><PencilSimple size={17} /></button><button className="icon-button danger" onClick={() => onDelete(entry.id)} aria-label="Delete entry"><Trash size={17} /></button></span></div>;
         })}
         {filtered.length === 0 && <div className="empty-state"><MagnifyingGlass size={28} /><strong>No entries found</strong><span>Try changing the filters or search term.</span></div>}
         <div className="table-total"><span>{filtered.length} entries</span><strong>Total {formatHours(total)}</strong></div>
@@ -507,14 +550,19 @@ function InsightsPage({ entries, team }) {
     ["Requirements Analysis", 26.6, 21.5, "0.80"],
     ["Test Planning", 31.7, 20.5, "0.65"],
     ["Entry Criteria", 5.8, 4, "0.70"],
+    ["Test Execution", 283, 71.5, "0.25"],
+    ["Bug Retest", 82, 11, "0.15"],
+    ["Exit Criteria", 20, 0, "0.00"],
+    ["Bug Reporting", 48, 6.5, "0.15"],
+    ["Coordination", 62, 12.5, "0.20"],
   ];
   return (
     <div className="page standard-page">
       <PageHeader kicker="Decision support" title="Estimation insights" description="Turn completed work into better planning factors for the next migration." />
       <div className="insight-callouts">
-        <article><CheckCircle size={24} weight="duotone" /><div><h2>Estimates carry healthy headroom</h2><p>Done activities used 61h of the 82.6h estimated. Similar future work can be planned more tightly.</p></div></article>
+        <article><CheckCircle size={24} weight="duotone" /><div><h2>Estimates carry healthy headroom</h2><p>Tracked activities used 162.5h of the 577.7h estimated. Similar future work can be planned more tightly.</p></div></article>
         <article><ChartBar size={24} weight="duotone" /><div><h2>Execution is the primary effort driver</h2><p>Test execution accounts for the largest share of both estimated and logged effort.</p></div></article>
-        <article><Target size={24} weight="duotone" /><div><h2>Planning factors are stabilizing</h2><p>Four completed activity groups now have enough evidence to recommend updated factors.</p></div></article>
+        <article><Target size={24} weight="duotone" /><div><h2>Planning factors are stabilizing</h2><p>Nine priority activity groups are now included in the accuracy view.</p></div></article>
       </div>
       <div className="insights-health"><HealthPanel actual={actual} estimated={641.8} /></div>
       <div className="insights-grid">
@@ -557,7 +605,7 @@ function Modal({ title, description, onClose, children, size = "medium" }) {
 
 function LogTimeModal({ apps, team, entry, onClose, onSave }) {
   const [form, setForm] = useState(entry || { date: "2026-07-19", hours: "", appId: apps[0]?.id || "", activity: activityOptions[0], tester: "", note: "" });
-  const update = (field, value) => setForm({ ...form, [field]: value });
+  const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const save = (event) => {
     event.preventDefault();
     if (!form.date || !form.appId || !form.activity || !Number(form.hours)) return;
@@ -566,15 +614,66 @@ function LogTimeModal({ apps, team, entry, onClose, onSave }) {
   return <Modal title={entry ? "Edit time entry" : "Log time"} description="Capture actual effort against a migration activity." onClose={onClose}><form onSubmit={save}><div className="form-grid"><label><span>Date</span><input type="date" value={form.date} onChange={(e) => update("date", e.target.value)} required /></label><label><span>Hours</span><input type="number" step="0.5" min="0.5" value={form.hours} onChange={(e) => update("hours", e.target.value)} placeholder="e.g. 2.5" required autoFocus /></label><label className="full"><span>Application</span><select value={form.appId} onChange={(e) => update("appId", e.target.value)}>{apps.map((app) => <option key={app.id} value={app.id}>{appName(app)}</option>)}</select></label><label className="full"><span>Activity</span><select value={form.activity} onChange={(e) => update("activity", e.target.value)}>{activityOptions.map((activity) => <option key={activity}>{activity}</option>)}</select></label><label className="full"><span>Tester</span><select value={form.tester} onChange={(e) => update("tester", e.target.value)}><option value="">— unassigned —</option>{team.map((tester) => <option key={tester}>{tester}</option>)}</select></label><label className="full"><span>Note</span><textarea value={form.note} onChange={(e) => update("note", e.target.value)} placeholder="What was completed?" /></label></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {entry ? "Save changes" : "Save entry"}</button></div></form></Modal>;
 }
 
-function ApplicationModal({ app, onClose, onSave }) {
-  const [form, setForm] = useState(app || { source: "", target: "", description: "", complexity: "Medium", multiplier: 1, estimate: "", ceiling: "" });
-  const update = (field, value) => setForm({ ...form, [field]: value });
+function BulkEditTimeModal({ count, team, onClose, onSave }) {
+  const [activity, setActivity] = useState("__keep__");
+  const [tester, setTester] = useState("__keep__");
+  const hasChanges = activity !== "__keep__" || tester !== "__keep__";
   const save = (event) => {
     event.preventDefault();
+    const changes = {};
+    if (activity !== "__keep__") changes.activity = activity;
+    if (tester !== "__keep__") changes.tester = tester === "__unassigned__" ? "" : tester;
+    if (hasChanges) onSave(changes);
+  };
+  return (
+    <Modal title={`Edit ${count} selected entries`} description="Apply shared activity or tester changes without overwriting dates, hours, or notes." onClose={onClose}>
+      <form onSubmit={save}>
+        <div className="form-grid">
+          <label className="full"><span>Activity</span><select value={activity} onChange={(e) => setActivity(e.target.value)}><option value="__keep__">Keep current activities</option>{activityOptions.map((option) => <option key={option}>{option}</option>)}</select></label>
+          <label className="full"><span>Tester</span><select value={tester} onChange={(e) => setTester(e.target.value)}><option value="__keep__">Keep current testers</option><option value="__unassigned__">Set as unassigned</option>{team.map((option) => <option key={option}>{option}</option>)}</select></label>
+        </div>
+        <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary" disabled={!hasChanges}><FloppyDisk size={17} /> Apply changes</button></div>
+      </form>
+    </Modal>
+  );
+}
+
+function ApplicationModal({ app, onClose, onSave }) {
+  const [form, setForm] = useState({ source: "", target: "", description: "", testPhase: "SIT", startDate: "", endDate: "", complexity: "Medium", multiplier: 1, estimate: "", ceiling: "", logo: "", ...(app || {}) });
+  const [logoError, setLogoError] = useState("");
+  const [dateError, setDateError] = useState("");
+  const logoRef = useRef(null);
+  const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  const updateLogo = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setLogoError("Choose a PNG, JPG, or WebP image.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setLogoError("Logo files must be 1 MB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      update("logo", reader.result);
+      setLogoError("");
+    };
+    reader.onerror = () => setLogoError("That image could not be read. Try another file.");
+    reader.readAsDataURL(file);
+  };
+  const save = (event) => {
+    event.preventDefault();
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setDateError("End Date must be on or after Start Date.");
+      return;
+    }
     const complexityMap = { Low: 0.9, Medium: 1, High: 1.2, "Very High": 1.4 };
     onSave({ ...form, id: form.id || `app-${Date.now()}`, multiplier: complexityMap[form.complexity], estimate: Number(form.estimate), ceiling: Number(form.ceiling || form.estimate * 1.12), doneEstimate: form.doneEstimate || 0, progress: form.progress || 0, variance: form.variance || -100, color: form.color || "blue" });
   };
-  return <Modal title={app ? "Edit application" : "Add application"} description="Define migration scope and estimation parameters." onClose={onClose} size="large"><form onSubmit={save}><div className="form-grid"><label><span>Source system <small>(optional)</small></span><input value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="e.g. Legacy CRM" autoFocus /></label><label><span>Target system</span><input value={form.target} onChange={(e) => update("target", e.target.value)} required /></label><label className="full"><span>Description</span><input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Data scope and key records" /></label><label><span>Complexity</span><select value={form.complexity} onChange={(e) => update("complexity", e.target.value)}><option>Low</option><option>Medium</option><option>High</option><option>Very High</option></select></label><label><span>Adjusted estimate (hours)</span><input type="number" step="0.1" min="1" value={form.estimate} onChange={(e) => update("estimate", e.target.value)} required /></label><label className="full"><span>95% confidence ceiling (hours)</span><input type="number" step="0.1" min="1" value={form.ceiling} onChange={(e) => update("ceiling", e.target.value)} placeholder="Optional—calculated if blank" /></label></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {app ? "Save changes" : "Add application"}</button></div></form></Modal>;
+  return <Modal title={app ? "Edit application" : "Add application"} description="Define migration scope, logo, schedule, and estimation parameters." onClose={onClose} size="large"><form onSubmit={save}><div className="form-grid"><div className="full logo-field"><span>Application logo</span><div className="logo-editor"><MigrationIcon app={form} /><div><strong>{form.logo ? "Custom logo" : "Default application icon"}</strong><small>PNG, JPG, or WebP · square images work best · max 1 MB</small><div className="logo-editor-actions"><button type="button" className="button secondary compact" onClick={() => logoRef.current?.click()}><UploadSimple size={16} /> {form.logo ? "Replace logo" : "Upload logo"}</button>{form.logo && <button type="button" className="text-button danger-text" onClick={() => { update("logo", ""); setLogoError(""); }}>Remove</button>}</div>{logoError && <em role="alert">{logoError}</em>}</div><input ref={logoRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={updateLogo} /></div></div><label><span>Source system <small>(optional)</small></span><input value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="e.g. Legacy CRM" autoFocus /></label><label><span>Target system</span><input value={form.target} onChange={(e) => update("target", e.target.value)} required /></label><label className="full"><span>Description</span><input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Data scope and key records" /></label><label><span>Test Phase</span><select value={form.testPhase} onChange={(e) => update("testPhase", e.target.value)}><option>SIT</option><option>UAT</option><option>Regression</option></select></label><label><span>Complexity</span><select value={form.complexity} onChange={(e) => update("complexity", e.target.value)}><option>Low</option><option>Medium</option><option>High</option><option>Very High</option></select></label><label><span>Start Date</span><input type="date" value={form.startDate} max={form.endDate || undefined} onChange={(e) => { update("startDate", e.target.value); setDateError(""); }} /></label><label><span>End Date</span><input type="date" value={form.endDate} min={form.startDate || undefined} onChange={(e) => { update("endDate", e.target.value); setDateError(""); }} /></label>{dateError && <div className="full form-error" role="alert">{dateError}</div>}<label><span>Adjusted estimate (hours)</span><input type="number" step="0.1" min="1" value={form.estimate} onChange={(e) => update("estimate", e.target.value)} required /></label><label><span>95% confidence ceiling (hours)</span><input type="number" step="0.1" min="1" value={form.ceiling} onChange={(e) => update("ceiling", e.target.value)} placeholder="Optional—calculated if blank" /></label></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {app ? "Save changes" : "Add application"}</button></div></form></Modal>;
 }
 
 function ConfirmModal({ title, description, confirmLabel, onClose, onConfirm }) {
@@ -609,6 +708,7 @@ export function App() {
   const [contingency, setContingency] = useStoredState("migrateqa-contingency", 15);
   const [hoursPerDay, setHoursPerDay] = useStoredState("migrateqa-hours-day", 8);
   const [logModal, setLogModal] = useState(null);
+  const [bulkEdit, setBulkEdit] = useState(null);
   const [appModal, setAppModal] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState("");
@@ -643,6 +743,12 @@ export function App() {
     notify(entry.id.startsWith("entry-") && entries.some((item) => item.id === entry.id) ? "Time entry updated" : "Time logged successfully");
   };
 
+  const saveBulkEntries = (ids, changes) => {
+    setEntries((current) => current.map((entry) => ids.includes(entry.id) ? { ...entry, ...changes } : entry));
+    setBulkEdit(null);
+    notify(`${ids.length} time ${ids.length === 1 ? "entry" : "entries"} updated`);
+  };
+
   const saveApp = (app) => {
     setApps((current) => current.some((item) => item.id === app.id) ? current.map((item) => item.id === app.id ? app : item) : [...current, app]);
     setAppModal(null);
@@ -650,7 +756,7 @@ export function App() {
   };
 
   const exportTimeCsv = () => downloadFile("migrateqa-time-log.csv", toCsv([["Date", "Application", "Activity", "Tester", "Hours", "Note"], ...entries.map((entry) => [entry.date, appName(apps.find((app) => app.id === entry.appId) || { source: "Removed", target: "app" }), entry.activity, entry.tester, entry.hours, entry.note])]), "text/csv");
-  const exportEstimatesCsv = () => downloadFile("migrateqa-estimates.csv", toCsv([["Application", "Complexity", "Estimate", "95% Ceiling"], ...apps.map((app) => [appName(app), app.complexity, app.estimate, app.ceiling])]), "text/csv");
+  const exportEstimatesCsv = () => downloadFile("migrateqa-estimates.csv", toCsv([["Application", "Test Phase", "Start Date", "End Date", "Complexity", "Estimate", "95% Ceiling"], ...apps.map((app) => [appName(app), app.testPhase || "SIT", app.startDate || "", app.endDate || "", app.complexity, app.estimate, app.ceiling])]), "text/csv");
   const exportJson = () => downloadFile("migrateqa-backup.json", JSON.stringify({ programTitle, contingency, hoursPerDay, team, apps, entries }, null, 2), "application/json");
   const importJson = (event) => {
     const file = event.target.files?.[0];
@@ -676,7 +782,7 @@ export function App() {
 
   const pageContent = useMemo(() => {
     if (page === "applications") return <ApplicationsPage apps={apps} entries={entries} onAdd={() => setAppModal({ mode: "add" })} onEdit={(app) => setAppModal({ mode: "edit", app })} onDelete={(app) => setConfirm({ title: "Delete application?", description: `${appName(app)} will be removed. Existing time entries remain in the audit log.`, label: "Delete application", action: () => { setApps(apps.filter((item) => item.id !== app.id)); setConfirm(null); notify("Application deleted"); } })} />;
-    if (page === "time-log") return <TimeLogPage apps={apps} entries={entries} team={team} onLog={() => setLogModal({})} onEdit={(entry) => setLogModal({ entry })} onDelete={(id) => setConfirm({ title: "Delete time entry?", description: "This logged effort will be removed from totals and cannot be recovered.", label: "Delete entry", action: () => { setEntries(entries.filter((entry) => entry.id !== id)); setConfirm(null); notify("Time entry deleted"); } })} onExport={exportTimeCsv} />;
+    if (page === "time-log") return <TimeLogPage apps={apps} entries={entries} team={team} onLog={() => setLogModal({})} onEdit={(entry) => setLogModal({ entry })} onBulkEdit={(ids) => setBulkEdit({ ids })} onDelete={(id) => setConfirm({ title: "Delete time entry?", description: "This logged effort will be removed from totals and cannot be recovered.", label: "Delete entry", action: () => { setEntries(entries.filter((entry) => entry.id !== id)); setConfirm(null); notify("Time entry deleted"); } })} onDeleteSelected={(ids) => setConfirm({ title: `Delete ${ids.length} selected ${ids.length === 1 ? "entry" : "entries"}?`, description: "The selected logged effort will be removed from totals and cannot be recovered.", label: ids.length === 1 ? "Delete entry" : `Delete ${ids.length} entries`, action: () => { setEntries(entries.filter((entry) => !ids.includes(entry.id))); setConfirm(null); notify(`${ids.length} time ${ids.length === 1 ? "entry" : "entries"} deleted`); } })} onExport={exportTimeCsv} />;
     if (page === "insights") return <InsightsPage entries={entries} team={team} />;
     if (page === "settings") return <SettingsPage programTitle={programTitle} setProgramTitle={setProgramTitle} contingency={contingency} setContingency={setContingency} hoursPerDay={hoursPerDay} setHoursPerDay={setHoursPerDay} team={team} setTeam={setTeam} onExportJson={exportJson} onImport={importJson} onExportCsv={exportEstimatesCsv} onReset={() => setConfirm({ title: "Reset all program data?", description: "Applications, time entries, team members, and settings will return to the sample program. Export a backup first if needed.", label: "Reset all data", action: () => { setApps(defaultApps); setEntries(defaultEntries); setTeam(defaultTeam); setProgramTitle("Data Migration Test Program"); setContingency(15); setHoursPerDay(8); setConfirm(null); notify("Sample program restored"); } })} notify={notify} />;
     return <Dashboard apps={apps} entries={entries} programTitle={programTitle} onNavigate={navigate} onLogTime={() => setLogModal({})} />;
@@ -688,6 +794,7 @@ export function App() {
       <div className="app-main"><Header programTitle={programTitle} onLogTime={() => setLogModal({})} />{pageContent}</div>
       <MobileNav page={page} onNavigate={navigate} />
       {logModal && <LogTimeModal apps={apps} team={team} entry={logModal.entry} onClose={() => setLogModal(null)} onSave={saveEntry} />}
+      {bulkEdit && <BulkEditTimeModal count={bulkEdit.ids.length} team={team} onClose={() => setBulkEdit(null)} onSave={(changes) => saveBulkEntries(bulkEdit.ids, changes)} />}
       {appModal && <ApplicationModal app={appModal.app} onClose={() => setAppModal(null)} onSave={saveApp} />}
       {confirm && <ConfirmModal title={confirm.title} description={confirm.description} confirmLabel={confirm.label} onClose={() => setConfirm(null)} onConfirm={confirm.action} />}
       <Toast message={toast} />

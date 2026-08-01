@@ -44,6 +44,18 @@ Evidence: `qa/final-comparison.jpg`.
 - Health insights remain available on the Insights screen.
 - No application-origin console errors were observed; browser-extension diagnostics were excluded.
 
+## August 1 component updates
+
+- Source references: application-title crop (620 × 210), activity table (838 × 316), and application editor references (2048 × 955 and 2048 × 957).
+- The long application title now clamps to exactly two lines without collision or horizontal overflow. Evidence: `qa/application-title-wrap-comparison.jpg` and `qa/application-title-two-lines-focus.jpg`.
+- The accuracy table renders all nine requested activity groups, including Test Execution, Bug Retest, Exit Criteria, Bug Reporting, and Coordination.
+- Time Log renders one header checkbox plus 30 row checkboxes. Single-row edit, multi-row shared edit, select-all, clear, and selected-row delete confirmation were verified in the browser.
+- Application logos can be uploaded, replaced, or removed. File validation accepts PNG, JPG, and WebP up to 1 MB while preserving a default icon fallback.
+- Test Phase persists with SIT, UAT, and Regression options and is surfaced on each application card.
+- Start Date and End Date persist with the application, render as a date range on the card, and constrain the End Date to the selected Start Date.
+- The application editor and selected-row toolbar were visually inspected at 1363 × 936; no clipping, collision, or broken alignment was found.
+- The production build completed successfully. No application-origin console errors were observed; browser-extension diagnostics were excluded.
+
 ## Final result
 
 passed
