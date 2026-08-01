@@ -56,6 +56,23 @@ Evidence: `qa/final-comparison.jpg`.
 - The application editor and selected-row toolbar were visually inspected at 1363 × 936; no clipping, collision, or broken alignment was found.
 - The production build completed successfully. No application-origin console errors were observed; browser-extension diagnostics were excluded.
 
+## Testing team allocation update
+
+- Source visual truth: `/workspace/scratch/b52b154abcd0/upload/Screenshot 2026-08-01 at 7.28.17 PM.png` (628 × 672 px).
+- Implementation screenshot: `cloud-browser://migration-qe-estimator/testing-team-selected` (browser-rendered in the current QA session at 1363 × 936 px).
+- CSS comparison size: both source and implementation use the existing 610 px desktop application modal; browser canvas size differs, so the comparison was normalized to the modal region at 1× CSS density.
+- State: Applications → Edit application; Aria Santos and Diego Tan selected with 80h and 60h estimates.
+- Full-view comparison: the existing typography, two-column form rhythm, borders, radii, blue primary action, dimmed backdrop, and application-logo panel remain consistent with the source.
+- Focused-region comparison: the new Testing team fieldset was reviewed together with the source modal. It extends the established form language with compact checkbox rows, avatars, enabled/disabled hour inputs, selected states, and an allocation progress summary.
+- Fonts and typography: Inter hierarchy, field labels, helper copy, weights, and input sizing remain consistent with the source.
+- Spacing and layout rhythm: the new two-column tester grid aligns to the source form tracks; the modal uses its existing internal scroll region so actions remain reachable without page overflow.
+- Colors and visual tokens: selected rows use the existing indigo focus token, while disabled inputs, borders, and allocation progress reuse established neutral and semantic tokens.
+- Image quality and asset fidelity: the supplied application-logo treatment is unchanged; tester initials reuse the app's existing avatar component and no placeholder imagery was introduced.
+- Copy and content: Testing team, selected count, per-tester hour labels, allocated hours, and remaining/over-estimate feedback are concise and application-specific.
+- Primary interactions tested: select two testers, enable only their hour inputs, enter hours, update allocated/unallocated totals, save, reopen, and confirm both selections and estimates persist.
+- Console check: no application-origin errors or warnings.
+- Findings: no actionable P0, P1, or P2 differences. The added vertical height is an intentional product requirement and remains contained by the existing modal scroll behavior.
+
 ## Final result
 
 passed

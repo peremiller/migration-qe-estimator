@@ -100,6 +100,7 @@ const defaultApps = [
     testPhase: "SIT",
     startDate: "2026-08-03",
     endDate: "2026-09-25",
+    testerEstimates: { "Aria Santos": 44, "Ben Cruz": 52, "Carla Reyes": 54.7, "Diego Tan": 48 },
     complexity: "High",
     multiplier: 1.2,
     estimate: 198.7,
@@ -117,6 +118,7 @@ const defaultApps = [
     testPhase: "UAT",
     startDate: "2026-09-01",
     endDate: "2026-10-30",
+    testerEstimates: { "Aria Santos": 18.6, "Ben Cruz": 20, "Carla Reyes": 36, "Diego Tan": 40 },
     complexity: "Medium",
     multiplier: 1,
     estimate: 114.6,
@@ -134,6 +136,7 @@ const defaultApps = [
     testPhase: "Regression",
     startDate: "2026-10-05",
     endDate: "2026-12-18",
+    testerEstimates: { "Aria Santos": 76.4, "Ben Cruz": 82, "Carla Reyes": 80, "Diego Tan": 90 },
     complexity: "Very High",
     multiplier: 1.4,
     estimate: 328.4,
@@ -638,12 +641,31 @@ function BulkEditTimeModal({ count, team, onClose, onSave }) {
   );
 }
 
-function ApplicationModal({ app, onClose, onSave }) {
-  const [form, setForm] = useState({ source: "", target: "", description: "", testPhase: "SIT", startDate: "", endDate: "", complexity: "Medium", multiplier: 1, estimate: "", ceiling: "", logo: "", ...(app || {}) });
+function ApplicationModal({ app, team, onClose, onSave }) {
+  const [form, setForm] = useState({ source: "", target: "", description: "", testPhase: "SIT", startDate: "", endDate: "", testerEstimates: {}, complexity: "Medium", multiplier: 1, estimate: "", ceiling: "", logo: "", ...(app || {}) });
   const [logoError, setLogoError] = useState("");
   const [dateError, setDateError] = useState("");
+  const [allocationError, setAllocationError] = useState("");
   const logoRef = useRef(null);
   const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  const testerEstimates = form.testerEstimates || {};
+  const selectedTesters = team.filter((tester) => Object.prototype.hasOwnProperty.call(testerEstimates, tester));
+  const allocatedHours = selectedTesters.reduce((sum, tester) => sum + (Number(testerEstimates[tester]) || 0), 0);
+  const estimateHours = Number(form.estimate) || 0;
+  const allocationDifference = estimateHours - allocatedHours;
+  const toggleTester = (tester, selected) => {
+    setForm((current) => {
+      const nextEstimates = { ...(current.testerEstimates || {}) };
+      if (selected) nextEstimates[tester] = nextEstimates[tester] ?? "";
+      else delete nextEstimates[tester];
+      return { ...current, testerEstimates: nextEstimates };
+    });
+    setAllocationError("");
+  };
+  const updateTesterHours = (tester, value) => {
+    setForm((current) => ({ ...current, testerEstimates: { ...(current.testerEstimates || {}), [tester]: value } }));
+    setAllocationError("");
+  };
   const updateLogo = (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -670,10 +692,15 @@ function ApplicationModal({ app, onClose, onSave }) {
       setDateError("End Date must be on or after Start Date.");
       return;
     }
+    if (selectedTesters.some((tester) => !Number(testerEstimates[tester]) || Number(testerEstimates[tester]) < 0)) {
+      setAllocationError("Enter estimated hours for every selected tester.");
+      return;
+    }
     const complexityMap = { Low: 0.9, Medium: 1, High: 1.2, "Very High": 1.4 };
-    onSave({ ...form, id: form.id || `app-${Date.now()}`, multiplier: complexityMap[form.complexity], estimate: Number(form.estimate), ceiling: Number(form.ceiling || form.estimate * 1.12), doneEstimate: form.doneEstimate || 0, progress: form.progress || 0, variance: form.variance || -100, color: form.color || "blue" });
+    const normalizedTesterEstimates = Object.fromEntries(selectedTesters.map((tester) => [tester, Number(testerEstimates[tester])]));
+    onSave({ ...form, testerEstimates: normalizedTesterEstimates, id: form.id || `app-${Date.now()}`, multiplier: complexityMap[form.complexity], estimate: Number(form.estimate), ceiling: Number(form.ceiling || form.estimate * 1.12), doneEstimate: form.doneEstimate || 0, progress: form.progress || 0, variance: form.variance || -100, color: form.color || "blue" });
   };
-  return <Modal title={app ? "Edit application" : "Add application"} description="Define migration scope, logo, schedule, and estimation parameters." onClose={onClose} size="large"><form onSubmit={save}><div className="form-grid"><div className="full logo-field"><span>Application logo</span><div className="logo-editor"><MigrationIcon app={form} /><div><strong>{form.logo ? "Custom logo" : "Default application icon"}</strong><small>PNG, JPG, or WebP · square images work best · max 1 MB</small><div className="logo-editor-actions"><button type="button" className="button secondary compact" onClick={() => logoRef.current?.click()}><UploadSimple size={16} /> {form.logo ? "Replace logo" : "Upload logo"}</button>{form.logo && <button type="button" className="text-button danger-text" onClick={() => { update("logo", ""); setLogoError(""); }}>Remove</button>}</div>{logoError && <em role="alert">{logoError}</em>}</div><input ref={logoRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={updateLogo} /></div></div><label><span>Source system <small>(optional)</small></span><input value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="e.g. Legacy CRM" autoFocus /></label><label><span>Target system</span><input value={form.target} onChange={(e) => update("target", e.target.value)} required /></label><label className="full"><span>Description</span><input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Data scope and key records" /></label><label><span>Test Phase</span><select value={form.testPhase} onChange={(e) => update("testPhase", e.target.value)}><option>SIT</option><option>UAT</option><option>Regression</option></select></label><label><span>Complexity</span><select value={form.complexity} onChange={(e) => update("complexity", e.target.value)}><option>Low</option><option>Medium</option><option>High</option><option>Very High</option></select></label><label><span>Start Date</span><input type="date" value={form.startDate} max={form.endDate || undefined} onChange={(e) => { update("startDate", e.target.value); setDateError(""); }} /></label><label><span>End Date</span><input type="date" value={form.endDate} min={form.startDate || undefined} onChange={(e) => { update("endDate", e.target.value); setDateError(""); }} /></label>{dateError && <div className="full form-error" role="alert">{dateError}</div>}<label><span>Adjusted estimate (hours)</span><input type="number" step="0.1" min="1" value={form.estimate} onChange={(e) => update("estimate", e.target.value)} required /></label><label><span>95% confidence ceiling (hours)</span><input type="number" step="0.1" min="1" value={form.ceiling} onChange={(e) => update("ceiling", e.target.value)} placeholder="Optional—calculated if blank" /></label></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {app ? "Save changes" : "Add application"}</button></div></form></Modal>;
+  return <Modal title={app ? "Edit application" : "Add application"} description="Define migration scope, team, schedule, and estimation parameters." onClose={onClose} size="large"><form onSubmit={save}><div className="form-grid"><div className="full logo-field"><span>Application logo</span><div className="logo-editor"><MigrationIcon app={form} /><div><strong>{form.logo ? "Custom logo" : "Default application icon"}</strong><small>PNG, JPG, or WebP · square images work best · max 1 MB</small><div className="logo-editor-actions"><button type="button" className="button secondary compact" onClick={() => logoRef.current?.click()}><UploadSimple size={16} /> {form.logo ? "Replace logo" : "Upload logo"}</button>{form.logo && <button type="button" className="text-button danger-text" onClick={() => { update("logo", ""); setLogoError(""); }}>Remove</button>}</div>{logoError && <em role="alert">{logoError}</em>}</div><input ref={logoRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={updateLogo} /></div></div><label><span>Source system <small>(optional)</small></span><input value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="e.g. Legacy CRM" autoFocus /></label><label><span>Target system</span><input value={form.target} onChange={(e) => update("target", e.target.value)} required /></label><label className="full"><span>Description</span><input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Data scope and key records" /></label><label><span>Test Phase</span><select value={form.testPhase} onChange={(e) => update("testPhase", e.target.value)}><option>SIT</option><option>UAT</option><option>Regression</option></select></label><label><span>Complexity</span><select value={form.complexity} onChange={(e) => update("complexity", e.target.value)}><option>Low</option><option>Medium</option><option>High</option><option>Very High</option></select></label><label><span>Start Date</span><input type="date" value={form.startDate} max={form.endDate || undefined} onChange={(e) => { update("startDate", e.target.value); setDateError(""); }} /></label><label><span>End Date</span><input type="date" value={form.endDate} min={form.startDate || undefined} onChange={(e) => { update("endDate", e.target.value); setDateError(""); }} /></label>{dateError && <div className="full form-error" role="alert">{dateError}</div>}<label><span>Adjusted estimate (hours)</span><input type="number" step="0.1" min="1" value={form.estimate} onChange={(e) => { update("estimate", e.target.value); setAllocationError(""); }} required /></label><label><span>95% confidence ceiling (hours)</span><input type="number" step="0.1" min="1" value={form.ceiling} onChange={(e) => update("ceiling", e.target.value)} placeholder="Optional—calculated if blank" /></label><fieldset className="full tester-allocation-field"><legend>Testing team</legend><div className="tester-allocation-heading"><div><strong>Select testers</strong><span>Assign estimated hours to each person involved in this application.</span></div><span className="selected-count">{selectedTesters.length} selected</span></div>{team.length > 0 ? <div className="tester-allocation-list">{team.map((tester) => { const selected = Object.prototype.hasOwnProperty.call(testerEstimates, tester); return <div className={`tester-allocation-row${selected ? " is-selected" : ""}`} key={tester}><label className="tester-choice"><input type="checkbox" checked={selected} onChange={(event) => toggleTester(tester, event.target.checked)} /><span className="avatar small" aria-hidden="true">{tester.split(" ").map((part) => part[0]).join("")}</span><strong>{tester}</strong></label><label className="tester-hours"><span className="visually-hidden">Estimated hours for {tester}</span><input type="number" min="0.5" step="0.5" value={selected ? testerEstimates[tester] : ""} onChange={(event) => updateTesterHours(tester, event.target.value)} placeholder="0" disabled={!selected} required={selected} aria-label={`Estimated hours for ${tester}`} /><span>hours</span></label></div>; })}</div> : <div className="tester-allocation-empty"><User size={20} /><span>Add testers in Settings before assigning application hours.</span></div>}<div className={`allocation-summary${allocationDifference < 0 ? " is-over" : ""}`}><div><strong>{formatHours(allocatedHours)} allocated</strong>{estimateHours > 0 && <span>{allocationDifference >= 0 ? `${formatHours(allocationDifference)} unallocated` : `${formatHours(Math.abs(allocationDifference))} over estimate`}</span>}</div>{estimateHours > 0 && <div className="allocation-track" aria-label={`${Math.round((allocatedHours / estimateHours) * 100)} percent of estimate allocated`}><span style={{ width: `${Math.min(100, (allocatedHours / estimateHours) * 100)}%` }} /></div>}</div>{allocationError && <div className="form-error" role="alert">{allocationError}</div>}</fieldset></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {app ? "Save changes" : "Add application"}</button></div></form></Modal>;
 }
 
 function ConfirmModal({ title, description, confirmLabel, onClose, onConfirm }) {
@@ -756,7 +783,7 @@ export function App() {
   };
 
   const exportTimeCsv = () => downloadFile("migrateqa-time-log.csv", toCsv([["Date", "Application", "Activity", "Tester", "Hours", "Note"], ...entries.map((entry) => [entry.date, appName(apps.find((app) => app.id === entry.appId) || { source: "Removed", target: "app" }), entry.activity, entry.tester, entry.hours, entry.note])]), "text/csv");
-  const exportEstimatesCsv = () => downloadFile("migrateqa-estimates.csv", toCsv([["Application", "Test Phase", "Start Date", "End Date", "Complexity", "Estimate", "95% Ceiling"], ...apps.map((app) => [appName(app), app.testPhase || "SIT", app.startDate || "", app.endDate || "", app.complexity, app.estimate, app.ceiling])]), "text/csv");
+  const exportEstimatesCsv = () => downloadFile("migrateqa-estimates.csv", toCsv([["Application", "Test Phase", "Start Date", "End Date", "Testing Team", "Tester Hour Estimates", "Complexity", "Estimate", "95% Ceiling"], ...apps.map((app) => { const testerEstimates = Object.entries(app.testerEstimates || {}); return [appName(app), app.testPhase || "SIT", app.startDate || "", app.endDate || "", testerEstimates.map(([tester]) => tester).join("; "), testerEstimates.map(([tester, hours]) => `${tester}: ${hours}h`).join("; "), app.complexity, app.estimate, app.ceiling]; })]), "text/csv");
   const exportJson = () => downloadFile("migrateqa-backup.json", JSON.stringify({ programTitle, contingency, hoursPerDay, team, apps, entries }, null, 2), "application/json");
   const importJson = (event) => {
     const file = event.target.files?.[0];
@@ -795,7 +822,7 @@ export function App() {
       <MobileNav page={page} onNavigate={navigate} />
       {logModal && <LogTimeModal apps={apps} team={team} entry={logModal.entry} onClose={() => setLogModal(null)} onSave={saveEntry} />}
       {bulkEdit && <BulkEditTimeModal count={bulkEdit.ids.length} team={team} onClose={() => setBulkEdit(null)} onSave={(changes) => saveBulkEntries(bulkEdit.ids, changes)} />}
-      {appModal && <ApplicationModal app={appModal.app} onClose={() => setAppModal(null)} onSave={saveApp} />}
+      {appModal && <ApplicationModal app={appModal.app} team={team} onClose={() => setAppModal(null)} onSave={saveApp} />}
       {confirm && <ConfirmModal title={confirm.title} description={confirm.description} confirmLabel={confirm.label} onClose={() => setConfirm(null)} onConfirm={confirm.action} />}
       <Toast message={toast} />
     </div>
