@@ -3,5 +3,6 @@ dist/
 qa/
 .vercel/
 .npm-cache/
+graphify-out/
 .DS_Store
 *.log

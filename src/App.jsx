@@ -5,15 +5,15 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import {
   AppWindow,
+  Briefcase,
   CalendarBlank,
   CaretDown,
   ChartBar,
-  ChartPieSlice,
   CheckCircle,
   Clock,
   Cloud,
   Database,
-  DotsThreeVertical,
+  DotsThree,
   DownloadSimple,
   FloppyDisk,
   Gear,
@@ -80,14 +80,14 @@ const activityShort = {
 };
 
 const chartData = [
-  { name: "Req Gather", estimated: 40, actual: 26.5 },
-  { name: "Req Analysis", estimated: 55, actual: 22 },
+  { name: "Requirements", estimated: 40, actual: 26.5 },
+  { name: "Analysis", estimated: 55, actual: 22 },
   { name: "Planning", estimated: 68, actual: 21.5 },
-  { name: "Entry Crit", estimated: 25, actual: 7 },
-  { name: "Exit Crit", estimated: 20, actual: 0 },
+  { name: "Entry Criteria", estimated: 25, actual: 7 },
+  { name: "Exit Criteria", estimated: 20, actual: 0 },
   { name: "Execution", estimated: 283, actual: 71.5 },
-  { name: "Re-testing", estimated: 82, actual: 11 },
-  { name: "Bug Report", estimated: 48, actual: 6.5 },
+  { name: "Retesting", estimated: 82, actual: 11 },
+  { name: "Bug Reporting", estimated: 48, actual: 6.5 },
   { name: "Coordination", estimated: 62, actual: 12.5 },
 ];
 
@@ -187,7 +187,8 @@ function useStoredState(key, initialValue) {
 }
 
 function appName(app) {
-  return `${app.source} → ${app.target}`;
+  const source = app.source?.trim();
+  return source ? `${source} → ${app.target}` : app.target;
 }
 
 function formatHours(value) {
@@ -258,12 +259,17 @@ function MobileNav({ page, onNavigate }) {
 }
 
 function Header({ programTitle, onLogTime }) {
+  const today = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date());
+
   return (
     <header className="topbar">
-      <div className="workspace-title"><SquaresFour size={22} weight="duotone" /> Quality Operations Brief</div>
+      <div className="workspace-title">{programTitle}</div>
       <div className="topbar-actions">
-        <button className="context-button"><span className="muted">Program:</span> {programTitle}<CaretDown size={15} /></button>
-        <button className="context-button"><CalendarBlank size={18} /> Jul 19, 2026<CaretDown size={15} /></button>
+        <span className="as-of-date"><CalendarBlank size={18} /> Data as of {today}</span>
         <button className="button primary" onClick={onLogTime}><Clock size={19} /> Log time</button>
       </div>
       <div className="mobile-topbar">
@@ -276,7 +282,7 @@ function Header({ programTitle, onLogTime }) {
 
 function Metric({ icon: Icon, tone, label, value, detail }) {
   return (
-    <div className="metric">
+    <div className={`metric metric-${tone}`}>
       <div className={`metric-icon ${tone}`}><Icon size={30} weight="duotone" /></div>
       <div>
         <span className="eyebrow">{label}</span>
@@ -311,29 +317,47 @@ function HealthDonut({ consumed }) {
 }
 
 function ActivityChart() {
+  const [view, setView] = useState("chart");
+
   return (
     <section className="panel chart-panel">
       <div className="panel-heading">
         <div><h2>Estimated vs actual by activity</h2></div>
+        <div className="chart-view-toggle" aria-label="Activity data view">
+          <button className={view === "chart" ? "active" : ""} onClick={() => setView("chart")} aria-label="Show chart" aria-pressed={view === "chart"}><ChartBar size={20} weight="bold" /></button>
+          <button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label="Show list" aria-pressed={view === "list"}><List size={20} weight="bold" /></button>
+        </div>
       </div>
       <div className="chart-legend" aria-hidden="true">
-        <span><Square size={11} weight="fill" color="#3457db" />Estimated (adj.)</span>
-        <span><Square size={11} weight="fill" color="#079455" />Actual (under)</span>
-        <span><Square size={11} weight="fill" color="#d92d20" />Actual (over)</span>
+        <span><Square size={11} weight="fill" color="#155eef" />Estimated</span>
+        <span><Square size={11} weight="fill" color="#06a6a6" />Actual</span>
       </div>
-      <div className="chart-wrap" role="img" aria-label="Estimated versus actual hours by testing activity">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }} barGap={4}>
-            <CartesianGrid vertical={false} stroke="#e3e8ef" strokeDasharray="3 3" />
-            <XAxis dataKey="name" tick={{ fill: "#52627a", fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
-            <YAxis domain={[0, 283]} ticks={[0, 71, 142, 212, 283]} tick={{ fill: "#52627a", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <Tooltip cursor={{ fill: "#f4f7fb" }} contentStyle={{ border: "1px solid #d9e0ea", borderRadius: 10, boxShadow: "0 8px 22px rgba(15,23,42,.08)" }} />
-            <Bar dataKey="estimated" fill="#3457db" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-            <Bar dataKey="actual" fill="#079455" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="panel-note">All hours shown in decimal (h)</div>
+      {view === "chart" ? (
+        <div className="chart-wrap" role="img" aria-label="Estimated versus actual hours by testing activity">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }} barGap={4}>
+              <CartesianGrid vertical={false} stroke="#dfe5ee" strokeDasharray="3 3" />
+              <XAxis dataKey="name" tick={{ fill: "#42526b", fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
+              <YAxis
+                domain={[0, 283]}
+                ticks={[0, 71, 142, 212, 283]}
+                tick={{ fill: "#42526b", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                label={{ value: "Hours", angle: -90, position: "insideLeft", offset: 11, fill: "#42526b", fontSize: 11 }}
+              />
+              <Tooltip cursor={{ fill: "#f5f8fc" }} contentStyle={{ border: "1px solid #d9e0ea", borderRadius: 10, boxShadow: "0 8px 22px rgba(15,23,42,.08)" }} />
+              <Bar dataKey="estimated" fill="#155eef" radius={[4, 4, 0, 0]} maxBarSize={26} isAnimationActive />
+              <Bar dataKey="actual" fill="#06a6a6" radius={[4, 4, 0, 0]} maxBarSize={26} isAnimationActive />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="activity-list" role="table" aria-label="Estimated and actual hours by activity">
+          <div className="activity-list-head" role="row"><span>Activity</span><span>Estimated</span><span>Actual</span><span>Consumed</span></div>
+          {chartData.map((item) => <div className="activity-list-row" role="row" key={item.name}><strong>{item.name}</strong><span>{formatHours(item.estimated)}</span><span>{formatHours(item.actual)}</span><span>{Math.round((item.actual / item.estimated) * 100)}%</span></div>)}
+        </div>
+      )}
     </section>
   );
 }
@@ -366,25 +390,22 @@ function HealthPanel({ actual, estimated }) {
 function ApplicationsTable({ apps, entries, onSelect }) {
   const appActual = (id) => entries.filter((e) => e.appId === id).reduce((sum, e) => sum + Number(e.hours), 0);
   return (
-    <section className="migration-section">
-      <div className="section-heading"><h2>Application migrations</h2><button className="text-button" onClick={() => onSelect("applications")}>View all <span>→</span></button></div>
-      <div className="data-table migration-table">
+    <section className="migration-section panel">
+      <div className="section-heading"><h2>Application migrations</h2></div>
+      <div className="migration-table">
         <div className="table-head migration-grid">
-          <span>Migration</span><span>Complexity</span><span>Logged / estimated</span><span>Progress</span><span>Confidence ceiling (95%)</span><span>Variance</span><span>Status</span><span />
+          <span>Application</span><span>Estimate risk</span><span>Progress</span><span>Status</span><span>Actions</span>
         </div>
         {apps.map((app) => {
           const logged = appActual(app.id);
           const progress = Math.min(100, Math.round((logged / app.estimate) * 100));
           return (
-            <button className="table-row migration-grid" key={app.id} onClick={() => onSelect("applications")}>
-              <div className="migration-name"><MigrationIcon app={app} /><div><strong>{appName(app)}</strong><small>{formatHours(logged)} logged of {formatHours(app.estimate)} estimated</small></div></div>
-              <div><span className={`complexity ${app.complexity.toLowerCase().replace(" ", "-")}`}>{app.complexity}</span><small>×{app.multiplier.toFixed(1)}</small></div>
-              <strong>{formatHours(logged)} <span className="muted">/</span> {formatHours(app.estimate)}</strong>
-              <div className="progress-cell"><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><span>{progress}%</span></div>
-              <div><strong>{formatHours(app.ceiling)}</strong><small>{Math.round((logged / app.estimate) * 100)}% consumed</small></div>
-              <div><strong className="positive">{app.variance}%</strong><small>{formatHours(logged - app.estimate)}</small></div>
-              <span className="status-label"><span className="status-dot" />On track</span>
-              <DotsThreeVertical size={20} />
+            <button className="table-row migration-grid" key={app.id} onClick={() => onSelect("applications")} aria-label={`Open ${appName(app)}`}>
+              <div className="migration-name"><MigrationIcon app={app} /><div><strong>{appName(app)}</strong></div></div>
+              <div className="risk-cell"><span className={`risk-dot ${app.color}`} /><span>{app.complexity}</span><small>×{app.multiplier.toFixed(1)}</small></div>
+              <div className="progress-cell"><div><span>{formatHours(logged)} logged of {formatHours(app.estimate)} estimated</span><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div></div>
+              <strong className="positive status-variance">{app.variance}%</strong>
+              <span className="row-menu" aria-hidden="true"><DotsThree size={21} weight="bold" /></span>
             </button>
           );
         })}
@@ -399,19 +420,14 @@ function Dashboard({ apps, entries, programTitle, onNavigate, onLogTime }) {
   const remaining = estimated - actual;
   return (
     <div className="page dashboard-page">
-      <div className="dashboard-intro">
-        <div><span className="section-kicker">Quality operations brief</span><h1>Program is within budget</h1><p>Strong execution with healthy headroom.</p></div>
-        <button className="button primary mobile-log" onClick={onLogTime}><Plus size={18} /> Log time</button>
-      </div>
       <div className="metrics-grid">
-        <Metric icon={Clock} tone="purple" label="Estimated" value={formatHours(estimated)} detail="80.2 person-days incl. 15% contingency" />
-        <Metric icon={User} tone="green" label="Actual logged" value={formatHours(actual)} detail={`${entries.length} entries • ${(actual / 8).toFixed(1)} person-days`} />
-        <Metric icon={ChartPieSlice} tone="blue" label="Remaining budget" value={formatHours(remaining)} detail={`${Math.round((actual / estimated) * 100)}% of estimate consumed`} />
-        <Metric icon={Target} tone="purple" label="Estimation accuracy" value="74%" detail="on Done activities • efficiency 135%" />
+        <Metric icon={Clock} tone="purple" label="Total estimated" value={formatHours(estimated)} detail="80.2 person-days incl. 15% contingency" />
+        <Metric icon={PencilSimple} tone="green" label="Actual logged" value={formatHours(actual)} detail={`${entries.length} entries • ${(actual / 8).toFixed(1)} person-days`} />
+        <Metric icon={Briefcase} tone="blue" label="Remaining budget" value={formatHours(remaining)} detail={`${Math.round((actual / estimated) * 100)}% of estimate consumed`} />
+        <Metric icon={Target} tone="cyan" label="Estimation accuracy" value="74%" detail="on Done activities • efficiency 135%" />
       </div>
-      <div className="analysis-grid"><ActivityChart /><HealthPanel actual={actual} estimated={estimated} /></div>
+      <div className="analysis-grid dashboard-analysis"><ActivityChart /></div>
       <ApplicationsTable apps={apps} entries={entries} onSelect={onNavigate} />
-      <p className="data-footnote">All estimates use PERT, complexity weighting, and program contingency. Confidence ceiling shown at 95%.</p>
     </div>
   );
 }
@@ -484,6 +500,7 @@ function TimeLogPage({ apps, entries, team, onLog, onEdit, onDelete, onExport })
 }
 
 function InsightsPage({ entries, team }) {
+  const actual = entries.reduce((sum, entry) => sum + Number(entry.hours), 0);
   const byTester = team.map((tester) => ({ tester, hours: entries.filter((e) => e.tester === tester).reduce((sum, e) => sum + Number(e.hours), 0) })).sort((a, b) => b.hours - a.hours);
   const accuracyRows = [
     ["Requirements Gathering", 18.6, 15, "0.80"],
@@ -499,6 +516,7 @@ function InsightsPage({ entries, team }) {
         <article><ChartBar size={24} weight="duotone" /><div><h2>Execution is the primary effort driver</h2><p>Test execution accounts for the largest share of both estimated and logged effort.</p></div></article>
         <article><Target size={24} weight="duotone" /><div><h2>Planning factors are stabilizing</h2><p>Four completed activity groups now have enough evidence to recommend updated factors.</p></div></article>
       </div>
+      <div className="insights-health"><HealthPanel actual={actual} estimated={641.8} /></div>
       <div className="insights-grid">
         <section className="panel insight-table"><div className="panel-heading"><h2>Accuracy by completed activity</h2></div><div className="accuracy-head accuracy-grid"><span>Activity</span><span>Estimated</span><span>Actual</span><span>Accuracy</span><span>Next factor</span></div>{accuracyRows.map(([activity, estimated, actual, factor]) => <div className="accuracy-row accuracy-grid" key={activity}><strong>{activity}</strong><span>{estimated}h</span><span>{actual}h</span><span>{Math.round((actual / estimated) * 100)}%</span><span className="factor">×{factor}</span></div>)}</section>
         <section className="panel effort-panel"><div className="panel-heading"><h2>Effort by tester</h2></div>{byTester.map((item) => <div className="tester-row" key={item.tester}><div className="avatar">{item.tester.split(" ").map((part) => part[0]).join("")}</div><div><strong>{item.tester}</strong><span>{(item.hours / 8).toFixed(1)} person-days</span></div><strong>{formatHours(item.hours)}</strong></div>)}</section>
@@ -556,7 +574,7 @@ function ApplicationModal({ app, onClose, onSave }) {
     const complexityMap = { Low: 0.9, Medium: 1, High: 1.2, "Very High": 1.4 };
     onSave({ ...form, id: form.id || `app-${Date.now()}`, multiplier: complexityMap[form.complexity], estimate: Number(form.estimate), ceiling: Number(form.ceiling || form.estimate * 1.12), doneEstimate: form.doneEstimate || 0, progress: form.progress || 0, variance: form.variance || -100, color: form.color || "blue" });
   };
-  return <Modal title={app ? "Edit application" : "Add application"} description="Define migration scope and estimation parameters." onClose={onClose} size="large"><form onSubmit={save}><div className="form-grid"><label><span>Source system</span><input value={form.source} onChange={(e) => update("source", e.target.value)} required autoFocus /></label><label><span>Target system</span><input value={form.target} onChange={(e) => update("target", e.target.value)} required /></label><label className="full"><span>Description</span><input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Data scope and key records" /></label><label><span>Complexity</span><select value={form.complexity} onChange={(e) => update("complexity", e.target.value)}><option>Low</option><option>Medium</option><option>High</option><option>Very High</option></select></label><label><span>Adjusted estimate (hours)</span><input type="number" step="0.1" min="1" value={form.estimate} onChange={(e) => update("estimate", e.target.value)} required /></label><label className="full"><span>95% confidence ceiling (hours)</span><input type="number" step="0.1" min="1" value={form.ceiling} onChange={(e) => update("ceiling", e.target.value)} placeholder="Optional—calculated if blank" /></label></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {app ? "Save changes" : "Add application"}</button></div></form></Modal>;
+  return <Modal title={app ? "Edit application" : "Add application"} description="Define migration scope and estimation parameters." onClose={onClose} size="large"><form onSubmit={save}><div className="form-grid"><label><span>Source system <small>(optional)</small></span><input value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="e.g. Legacy CRM" autoFocus /></label><label><span>Target system</span><input value={form.target} onChange={(e) => update("target", e.target.value)} required /></label><label className="full"><span>Description</span><input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Data scope and key records" /></label><label><span>Complexity</span><select value={form.complexity} onChange={(e) => update("complexity", e.target.value)}><option>Low</option><option>Medium</option><option>High</option><option>Very High</option></select></label><label><span>Adjusted estimate (hours)</span><input type="number" step="0.1" min="1" value={form.estimate} onChange={(e) => update("estimate", e.target.value)} required /></label><label className="full"><span>95% confidence ceiling (hours)</span><input type="number" step="0.1" min="1" value={form.ceiling} onChange={(e) => update("ceiling", e.target.value)} placeholder="Optional—calculated if blank" /></label></div><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary"><FloppyDisk size={17} /> {app ? "Save changes" : "Add application"}</button></div></form></Modal>;
 }
 
 function ConfirmModal({ title, description, confirmLabel, onClose, onConfirm }) {
