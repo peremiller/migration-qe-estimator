@@ -3,4 +3,6 @@ qa/
 AGENTS.md
 design-qa.md
 sites/
-scripts/
+scripts/*
+!scripts/offline/
+!scripts/offline/**
