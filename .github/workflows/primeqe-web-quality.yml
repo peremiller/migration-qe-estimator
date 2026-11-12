@@ -8,7 +8,7 @@ permissions:
 env:
   # The project .npmrc contains an original workstation-only /workspace cache.
   # Use an isolated writable runner cache without changing local developer settings.
-  NPM_CONFIG_CACHE: ${{ runner.temp }}/primeqe-npm-cache
+  NPM_CONFIG_CACHE: /tmp/primeqe-npm-cache
 jobs:
   test:
     runs-on: ubuntu-latest
