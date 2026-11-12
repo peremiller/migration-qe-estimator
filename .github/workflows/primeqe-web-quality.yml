@@ -24,8 +24,8 @@ jobs:
         run: node --test scripts/quality/backup.test.mjs
       - name: Offline regression tests
         run: npm run test:offline
-      - name: Canonical production build
-        run: npm run build
+      - name: Existing Vercel target build (Sites packaging requires unavailable hosting.json)
+        run: npm run build:vercel
       - name: Install Chromium test driver
         run: |
           npm install --no-save playwright@1.56.1
