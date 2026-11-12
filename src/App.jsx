@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isValidBackupData } from "./backup-validation.mjs";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
@@ -252,7 +253,7 @@ function Sidebar({ page, onNavigate }) {
       </nav>
       <div className="sidebar-foot">
         <span className="status-dot" />
-        <div><strong>Program active</strong><small>Last saved just now</small></div>
+        <div><strong>Local workspace</strong><small>Saved in this browser</small></div>
       </div>
     </aside>
   );
@@ -264,7 +265,7 @@ function MobileNav({ page, onNavigate }) {
       {navItems.map((item) => {
         const Icon = item.icon;
         return (
-          <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => onNavigate(item.id)}>
+          <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => onNavigate(item.id)} aria-current={page === item.id ? "page" : undefined}>
             <Icon size={21} weight={page === item.id ? "fill" : "regular"} />
             <span>{item.label.replace("Applications", "Apps").replace("Time Log", "Time")}</span>
           </button>
@@ -285,7 +286,7 @@ function Header({ programTitle, onLogTime }) {
     <header className="topbar">
       <div className="workspace-title">{programTitle}</div>
       <div className="topbar-actions">
-        <span className="as-of-date"><CalendarBlank size={18} /> Data as of {today}</span>
+        <span className="as-of-date"><CalendarBlank size={18} /> Local workspace · {today}</span>
         <button className="button primary" onClick={onLogTime}><Clock size={19} /> Log time</button>
       </div>
       <div className="mobile-topbar">
@@ -598,12 +599,35 @@ function SettingsPage({ programTitle, setProgramTitle, contingency, setContingen
 }
 
 function Modal({ title, description, onClose, children, size = "medium" }) {
+  const dialogRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
-    const onKey = (event) => event.key === "Escape" && onClose();
+    const previouslyFocused = document.activeElement;
+    const dialog = dialogRef.current;
+    const controls = () => Array.from(dialog?.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])
+      .filter((control) => !control.closest('[hidden], [aria-hidden="true"]') && control.getClientRects().length > 0);
+    const initial = controls().find((control) => control.autofocus) || controls()[0];
+    initial?.focus();
+    const onKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); return; }
+      if (event.key !== "Tab") return;
+      const focusable = controls();
+      if (!focusable.length) { event.preventDefault(); dialog?.focus(); return; }
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className={`modal ${size}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-header"><div><h2>{title}</h2>{description && <p>{description}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={20} /></button></div>{children}</div></div>;
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, []);
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div ref={dialogRef} className={`modal ${size}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}><div className="modal-header"><div><h2>{title}</h2>{description && <p>{description}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={20} /></button></div>{children}</div></div>;
 }
 
 function LogTimeModal({ apps, team, entry, onClose, onSave }) {
@@ -743,7 +767,7 @@ export function App() {
   useEffect(() => {
     const onHash = () => {
       const next = location.hash.slice(1);
-      if (navItems.some((item) => item.id === next)) setPage(next);
+      setPage(navItems.some((item) => item.id === next) ? next : "dashboard");
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -788,10 +812,13 @@ export function App() {
   const importJson = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { notify("Backup is too large (5 MB maximum)"); event.target.value = ""; return; }
     const reader = new FileReader();
+    reader.onerror = () => notify("That backup file could not be read");
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
+        if (!isValidBackupData(data)) { notify("Invalid backup: existing workspace data was preserved"); return; }
         if (data.apps) setApps(data.apps);
         if (data.entries) setEntries(data.entries);
         if (data.team) setTeam(data.team);
@@ -817,8 +844,9 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <a href="#workspace-main" className="skip-link">Skip to main content</a>
       <Sidebar page={page} onNavigate={navigate} />
-      <div className="app-main"><Header programTitle={programTitle} onLogTime={() => setLogModal({})} />{pageContent}</div>
+      <main id="workspace-main" tabIndex={-1} className="app-main"><Header programTitle={programTitle} onLogTime={() => setLogModal({})} />{pageContent}</main>
       <MobileNav page={page} onNavigate={navigate} />
       {logModal && <LogTimeModal apps={apps} team={team} entry={logModal.entry} onClose={() => setLogModal(null)} onSave={saveEntry} />}
       {bulkEdit && <BulkEditTimeModal count={bulkEdit.ids.length} team={team} onClose={() => setBulkEdit(null)} onSave={(changes) => saveBulkEntries(bulkEdit.ids, changes)} />}
