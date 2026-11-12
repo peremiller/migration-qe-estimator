@@ -233,9 +233,9 @@ function AppLogo({ compact = false }) {
 
 function Sidebar({ page, onNavigate }) {
   return (
-    <aside className="sidebar" aria-label="Primary navigation">
+    <aside className="sidebar">
       <AppLogo />
-      <nav className="side-nav">
+      <nav className="side-nav" aria-label="Primary navigation">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
