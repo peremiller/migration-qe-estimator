@@ -3083,3 +3083,24 @@ html :is(.tabs,.toolbar,.filter-bar,.filters,.actions,.button-row,.dialog-action
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important; } }
 
 @media screen{html .application-card{border-radius:10px;box-shadow:none}html .chart-panel{border-radius:10px;box-shadow:none}html .dashboard-intro h1{letter-spacing:-.045em}html .confidence-note{font-size:12px;line-height:1.7}html .activity-list-row{padding-top:14px;padding-bottom:14px}}
+
+
+/* Keyboard-first entry point. It stays hidden visually until focused. */
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #123652;
+  border: 2px solid #ffffff;
+  transform: translateY(-180%);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid #fbd38d;
+  outline-offset: 2px;
+}
+.app-main:focus { outline: none; }
