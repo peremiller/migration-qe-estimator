@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { isValidBackupData } from "./backup-validation.mjs";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -47,6 +47,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+const ModalReturnFocusContext = createContext(null);
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: SquaresFour },
@@ -601,9 +603,11 @@ function SettingsPage({ programTitle, setProgramTitle, contingency, setContingen
 function Modal({ title, description, onClose, children, size = "medium" }) {
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
+  const lastFocusOutside = useContext(ModalReturnFocusContext);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
-    const previouslyFocused = document.activeElement;
+    // React autofocus may run before this effect: retain the last external trigger.
+    const previouslyFocused = lastFocusOutside?.current || document.activeElement;
     const dialog = dialogRef.current;
     const controls = () => Array.from(dialog?.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])
       .filter((control) => !control.closest('[hidden], [aria-hidden="true"]') && control.getClientRects().length > 0);
@@ -763,6 +767,15 @@ export function App() {
   const [appModal, setAppModal] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState("");
+  const lastOutsideDialogFocus = useRef(null);
+
+  useEffect(() => {
+    const remember = (event) => {
+      if (!event.target.closest?.('[role="dialog"]')) lastOutsideDialogFocus.current = event.target;
+    };
+    document.addEventListener("focusin", remember, true);
+    return () => document.removeEventListener("focusin", remember, true);
+  }, []);
 
   useEffect(() => {
     const onHash = () => {
@@ -843,6 +856,7 @@ export function App() {
   }, [page, apps, entries, team, programTitle, contingency, hoursPerDay]);
 
   return (
+    <ModalReturnFocusContext.Provider value={lastOutsideDialogFocus}>
     <div className="app-shell">
       <a href="#workspace-main" className="skip-link">Skip to main content</a>
       <Sidebar page={page} onNavigate={navigate} />
@@ -854,5 +868,6 @@ export function App() {
       {confirm && <ConfirmModal title={confirm.title} description={confirm.description} confirmLabel={confirm.label} onClose={() => setConfirm(null)} onConfirm={confirm.action} />}
       <Toast message={toast} />
     </div>
+    </ModalReturnFocusContext.Provider>
   );
 }
