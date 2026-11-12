@@ -1,0 +1,33 @@
+name: PrimeQE MigrateQA Web Quality
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Validate imported backup formats
+        run: node --test scripts/quality/backup.test.mjs
+      - name: Offline regression tests
+        run: npm run test:offline
+      - name: Canonical production build
+        run: npm run build
+      - name: Install Chromium test driver
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Real Chromium accessibility and preservation smoke
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/migrateqa-vite.log 2>&1 &
+          for i in $(seq 1 40); do if curl -fsS http://127.0.0.1:5173/ >/dev/null; then break; fi; sleep 1; done
+          node scripts/quality/browser.mjs
