@@ -27,3 +27,14 @@ test("rejects malformed app metadata and non-finite time settings", () => {
     {...example, hoursPerDay: 0},
   ]) assert.equal(isValidBackupData(value), false);
 });
+
+test("rejects impossible calendar dates without altering an existing workspace", () => {
+  const badDates = ["2026-02-29", "2026-02-30", "2026-02-31", "2026-04-31", "2026-00-10", "2026-13-01", "2026-11-00", "not-a-date"];
+  for (const date of badDates) {
+    assert.equal(isValidBackupData({...example, entries: [{...example.entries[0], date}]}), false, `invalid time-log date ${date}`);
+    assert.equal(isValidBackupData({...example, apps: [{...example.apps[0], startDate: date}]}), false, `invalid app start ${date}`);
+    assert.equal(isValidBackupData({...example, apps: [{...example.apps[0], endDate: date}]}), false, `invalid app end ${date}`);
+  }
+  assert.equal(isValidBackupData({...example, entries: [{...example.entries[0], date: "2028-02-29"}]}), true, "valid leap day");
+  assert.equal(isValidBackupData({...example, apps: [{...example.apps[0], startDate: "2028-02-29"}]}), true);
+});
