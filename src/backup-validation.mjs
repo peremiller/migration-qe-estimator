@@ -2,8 +2,13 @@
 // a previously saved browser workspace. Unknown fields are ignored for older backups.
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const finiteNumber = (value) => typeof value === "number" && Number.isFinite(value);
-const validDate = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
-  && !Number.isNaN(new Date(value + "T12:00:00").getTime());
+// Date.parse can normalize dates like February 31 into March. A backup must
+// contain real calendar dates so imported estimates and time logs stay accurate.
+const validDate = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + "T12:00:00Z");
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
 
 export function isValidBackupData(data) {
   if (!isObject(data)) return false;
