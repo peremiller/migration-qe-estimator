@@ -47,7 +47,17 @@ try {
       await page.close();
     }
   }
-  console.log("Chromium keyboard, modal, hash/history/refresh, invalid import and data preservation passed in", passed, "viewport/theme combinations");
+  // Open real UI with a corrupt pre-existing record. It must remain untouched.
+  const corrupt = await browser.newPage({ viewport: { width: 390, height: 900 }, colorScheme: "dark" });
+  const corruptErrors = [];
+  corrupt.on("pageerror", error => corruptErrors.push(error.message));
+  await corrupt.addInitScript(() => window.localStorage.setItem("migrateqa-apps", "{corrupt-original"));
+  await corrupt.goto(base + "#settings", { waitUntil: "networkidle" });
+  await corrupt.getByRole("alert").filter({ hasText: "Browser storage warning" }).waitFor({ state: "visible" });
+  assert.equal(await corrupt.evaluate(() => localStorage.getItem("migrateqa-apps")), "{corrupt-original", "unreadable original must survive boot");
+  assert.deepEqual(corruptErrors, [], "corrupt record should not crash application");
+  await corrupt.close();
+    console.log("Chromium keyboard, modal, hash/history/refresh, invalid import and data preservation passed in", passed, "viewport/theme combinations");
 } finally {
   await browser.close();
 }
