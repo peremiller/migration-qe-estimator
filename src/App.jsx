@@ -517,10 +517,10 @@ function TimeLogPage({ apps, entries, team, onLog, onEdit, onBulkEdit, onDelete,
     <div className="page standard-page">
       <PageHeader kicker="Effort tracking" title="Time log" description="Review actual effort, filter activity, and keep migration work auditable." action={<button className="button primary" onClick={onLog}><Plus size={18} /> Log time</button>} />
       <div className="filter-bar">
-        <label className="search-field"><MagnifyingGlass size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes or testers" /></label>
-        <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}><option value="all">All applications</option>{apps.map((app) => <option key={app.id} value={app.id}>{appName(app)}</option>)}</select>
-        <select value={activityFilter} onChange={(e) => setActivityFilter(e.target.value)}><option value="all">All activities</option>{activityOptions.map((activity) => <option key={activity}>{activity}</option>)}</select>
-        <select value={testerFilter} onChange={(e) => setTesterFilter(e.target.value)}><option value="all">All testers</option>{team.map((tester) => <option key={tester}>{tester}</option>)}</select>
+        <label className="search-field"><MagnifyingGlass size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes or testers" aria-label="Search time log notes and testers" /></label>
+        <select aria-label="Filter time logs by application" value={appFilter} onChange={(e) => setAppFilter(e.target.value)}><option value="all">All applications</option>{apps.map((app) => <option key={app.id} value={app.id}>{appName(app)}</option>)}</select>
+        <select aria-label="Filter time logs by activity" value={activityFilter} onChange={(e) => setActivityFilter(e.target.value)}><option value="all">All activities</option>{activityOptions.map((activity) => <option key={activity}>{activity}</option>)}</select>
+        <select aria-label="Filter time logs by tester" value={testerFilter} onChange={(e) => setTesterFilter(e.target.value)}><option value="all">All testers</option>{team.map((tester) => <option key={tester}>{tester}</option>)}</select>
         <button className="button secondary" onClick={onExport}><DownloadSimple size={17} /> CSV</button>
       </div>
       {selectedIds.length > 0 && (
