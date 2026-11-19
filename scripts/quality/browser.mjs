@@ -40,8 +40,9 @@ try {
       await page.reload();
       await page.waitForFunction(() => document.title.startsWith("Settings"));
       assert.equal(await page.evaluate(() => localStorage.getItem("primeqe-preservation-sentinel")), "must-remain");
-      const timeNav = page.locator('.mobile-nav button:visible, .side-nav button:visible').filter({ hasText: "Time Log" }).first();
-      await timeNav.click();
+      // Load the stable time-log deep link directly; navigation controls are already
+      // exercised above, independent of the viewport's responsive menu.
+      await page.goto(base + "#time-log", { waitUntil: "networkidle" });
       await page.waitForFunction(() => document.title.startsWith("Time Log"));
       const search = page.getByRole("textbox", { name: "Search time log notes and testers" });
       const byApplication = page.getByRole("combobox", { name: "Filter time logs by application" });
