@@ -3104,3 +3104,35 @@ html :is(.tabs,.toolbar,.filter-bar,.filters,.actions,.button-row,.dialog-action
   outline-offset: 2px;
 }
 .app-main:focus { outline: none; }
+
+/* Persistent, high-contrast warning for browser storage errors in either theme. */
+.storage-warning {
+  margin: 12px 20px;
+  padding: 12px 16px;
+  border: 2px solid #9a3412;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #7c2d12;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.storage-warning strong { font-weight: 700; }
+
+/* Keep the Time Log filter controls inside the 320px mobile viewport.
+   A native select's min-content width must not widen its grid track. */
+@media (max-width: 720px) {
+  .filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+  }
+  .filter-bar > *,
+  .filter-bar select,
+  .filter-bar .search-field,
+  .filter-bar .search-field input {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .filter-bar select {
+    width: 100%;
+  }
+}

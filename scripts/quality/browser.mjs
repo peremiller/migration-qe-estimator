@@ -40,6 +40,26 @@ try {
       await page.reload();
       await page.waitForFunction(() => document.title.startsWith("Settings"));
       assert.equal(await page.evaluate(() => localStorage.getItem("primeqe-preservation-sentinel")), "must-remain");
+      // Load the stable time-log deep link directly; navigation controls are already
+      // exercised above, independent of the viewport's responsive menu.
+      await page.goto(base + "#time-log", { waitUntil: "networkidle" });
+      await page.waitForFunction(() => document.title.startsWith("Time Log"));
+      const search = page.getByRole("textbox", { name: "Search time log notes and testers" });
+      const byApplication = page.getByRole("combobox", { name: "Filter time logs by application" });
+      const byActivity = page.getByRole("combobox", { name: "Filter time logs by activity" });
+      const byTester = page.getByRole("combobox", { name: "Filter time logs by tester" });
+      assert.equal(await search.count(), 1, "time log search has an accessible name");
+      assert.equal(await byApplication.count(), 1, "application filter has its own accessible name");
+      assert.equal(await byActivity.count(), 1, "activity filter has its own accessible name");
+      assert.equal(await byTester.count(), 1, "tester filter has its own accessible name");
+      await byApplication.selectOption({ index: 1 });
+      assert.equal(await byActivity.inputValue(), "all", "changing application preserves activity filter");
+      assert.equal(await byTester.inputValue(), "all", "changing application preserves tester filter");
+      await byApplication.selectOption("all");
+      await byApplication.focus();
+      await page.keyboard.press("Tab");
+      assert.equal(await byActivity.evaluate((element) => element === document.activeElement), true, "filter keyboard order remains predictable");
+      assert.equal(await page.evaluate(() => localStorage.getItem("primeqe-preservation-sentinel")), "must-remain", "filter interactions preserve stored data");
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
       assert.ok(overflow <= 3, "horizontal overflow at " + width + "px: " + overflow);
       assert.deepEqual(pageErrors, [], "unexpected page errors");
@@ -47,7 +67,17 @@ try {
       await page.close();
     }
   }
-  console.log("Chromium keyboard, modal, hash/history/refresh, invalid import and data preservation passed in", passed, "viewport/theme combinations");
+  // Open real UI with a corrupt pre-existing record. It must remain untouched.
+  const corrupt = await browser.newPage({ viewport: { width: 390, height: 900 }, colorScheme: "dark" });
+  const corruptErrors = [];
+  corrupt.on("pageerror", error => corruptErrors.push(error.message));
+  await corrupt.addInitScript(() => window.localStorage.setItem("migrateqa-apps", "{corrupt-original"));
+  await corrupt.goto(base + "#settings", { waitUntil: "networkidle" });
+  await corrupt.getByRole("alert").filter({ hasText: "Browser storage warning" }).waitFor({ state: "visible" });
+  assert.equal(await corrupt.evaluate(() => localStorage.getItem("migrateqa-apps")), "{corrupt-original", "unreadable original must survive boot");
+  assert.deepEqual(corruptErrors, [], "corrupt record should not crash application");
+  await corrupt.close();
+    console.log("Chromium keyboard, modal, hash/history/refresh, invalid import and data preservation passed in", passed, "viewport/theme combinations");
 } finally {
   await browser.close();
 }
