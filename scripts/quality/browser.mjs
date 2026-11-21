@@ -14,6 +14,12 @@ try {
       await page.waitForFunction(() => document.title.startsWith("Settings"));
       assert.equal(await page.locator('main#workspace-main').count(), 1, "main landmark");
       assert.equal(await page.locator(".skip-link").count(), 1, "skip navigation");
+      const skip = page.getByRole("link", { name: "Skip to main content" });
+      await skip.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(new URL(page.url()).hash, "#settings", "skip link must preserve current deep route");
+      assert.equal(await page.evaluate(() => document.activeElement?.id), "workspace-main", "skip link moves keyboard focus to main landmark");
+      assert.equal(await page.title(), "Settings — MigrateQA", "skip link must not navigate away");
       assert.equal(await page.locator('nav[aria-label="Primary navigation"]').count(), 1);
       await page.evaluate(() => localStorage.setItem("primeqe-preservation-sentinel", "must-remain"));
       await page.locator('input[type="file"]').setInputFiles({
