@@ -858,7 +858,7 @@ export function App() {
   return (
     <ModalReturnFocusContext.Provider value={lastOutsideDialogFocus}>
     <div className="app-shell">
-      <a href="#workspace-main" className="skip-link">Skip to main content</a>
+      <a href="#workspace-main" className="skip-link" onClick={(event) => { event.preventDefault(); document.getElementById("workspace-main")?.focus(); }}>Skip to main content</a>
       <Sidebar page={page} onNavigate={navigate} />
       <main id="workspace-main" tabIndex={-1} className="app-main"><Header programTitle={programTitle} onLogTime={() => setLogModal({})} />{storageWarning && <div role="alert" className="storage-warning"><strong>Browser storage warning.</strong> Some saved records could not be read or saved. Changes may exist only in this tab. Export your currently visible workspace as a JSON backup before closing it. Unreadable original records have not been overwritten.</div>}{pageContent}</main>
       <MobileNav page={page} onNavigate={navigate} />
