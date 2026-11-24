@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { isValidBackupData } from "./backup-validation.mjs";
+import { isValidBackupData, loadStoredValue, persistStoredValue } from "./backup-validation.mjs";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
@@ -187,18 +187,17 @@ const defaultEntries = [
 const defaultTeam = ["Aria Santos", "Ben Cruz", "Carla Reyes", "Diego Tan"];
 
 function useStoredState(key, initialValue) {
-  const [value, setValue] = useState(() => {
-    try {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : initialValue;
-    } catch {
-      return initialValue;
-    }
-  });
+  const initial = useRef(null);
+  if (!initial.current) initial.current = loadStoredValue(() => window.localStorage, key, initialValue);
+  const [value, setValue] = useState(initial.current.value);
+  const [storageError, setStorageError] = useState(initial.current.error);
+  // A corrupt or unreadable original is never overwritten by sample defaults.
+  const canPersist = useRef(initial.current.writable);
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
+    if (!canPersist.current) return;
+    if (!persistStoredValue(() => window.localStorage, key, value)) setStorageError("write-failed");
   }, [key, value]);
-  return [value, setValue];
+  return [value, setValue, storageError];
 }
 
 function appName(app) {
@@ -518,10 +517,10 @@ function TimeLogPage({ apps, entries, team, onLog, onEdit, onBulkEdit, onDelete,
     <div className="page standard-page">
       <PageHeader kicker="Effort tracking" title="Time log" description="Review actual effort, filter activity, and keep migration work auditable." action={<button className="button primary" onClick={onLog}><Plus size={18} /> Log time</button>} />
       <div className="filter-bar">
-        <label className="search-field"><MagnifyingGlass size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes or testers" /></label>
-        <select value={appFilter} onChange={(e) => setAppFilter(e.target.value)}><option value="all">All applications</option>{apps.map((app) => <option key={app.id} value={app.id}>{appName(app)}</option>)}</select>
-        <select value={activityFilter} onChange={(e) => setActivityFilter(e.target.value)}><option value="all">All activities</option>{activityOptions.map((activity) => <option key={activity}>{activity}</option>)}</select>
-        <select value={testerFilter} onChange={(e) => setTesterFilter(e.target.value)}><option value="all">All testers</option>{team.map((tester) => <option key={tester}>{tester}</option>)}</select>
+        <label className="search-field"><MagnifyingGlass size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes or testers" aria-label="Search time log notes and testers" /></label>
+        <select aria-label="Filter time logs by application" value={appFilter} onChange={(e) => setAppFilter(e.target.value)}><option value="all">All applications</option>{apps.map((app) => <option key={app.id} value={app.id}>{appName(app)}</option>)}</select>
+        <select aria-label="Filter time logs by activity" value={activityFilter} onChange={(e) => setActivityFilter(e.target.value)}><option value="all">All activities</option>{activityOptions.map((activity) => <option key={activity}>{activity}</option>)}</select>
+        <select aria-label="Filter time logs by tester" value={testerFilter} onChange={(e) => setTesterFilter(e.target.value)}><option value="all">All testers</option>{team.map((tester) => <option key={tester}>{tester}</option>)}</select>
         <button className="button secondary" onClick={onExport}><DownloadSimple size={17} /> CSV</button>
       </div>
       {selectedIds.length > 0 && (
@@ -756,12 +755,13 @@ function toCsv(rows) {
 export function App() {
   const initialPage = navItems.some((item) => item.id === location.hash.slice(1)) ? location.hash.slice(1) : "dashboard";
   const [page, setPage] = useState(initialPage);
-  const [apps, setApps] = useStoredState("migrateqa-apps", defaultApps);
-  const [entries, setEntries] = useStoredState("migrateqa-entries", defaultEntries);
-  const [team, setTeam] = useStoredState("migrateqa-team", defaultTeam);
-  const [programTitle, setProgramTitle] = useStoredState("migrateqa-title", "Data Migration Test Program");
-  const [contingency, setContingency] = useStoredState("migrateqa-contingency", 15);
-  const [hoursPerDay, setHoursPerDay] = useStoredState("migrateqa-hours-day", 8);
+  const [apps, setApps, appsStorageError] = useStoredState("migrateqa-apps", defaultApps);
+  const [entries, setEntries, entriesStorageError] = useStoredState("migrateqa-entries", defaultEntries);
+  const [team, setTeam, teamStorageError] = useStoredState("migrateqa-team", defaultTeam);
+  const [programTitle, setProgramTitle, programTitleStorageError] = useStoredState("migrateqa-title", "Data Migration Test Program");
+  const [contingency, setContingency, contingencyStorageError] = useStoredState("migrateqa-contingency", 15);
+  const [hoursPerDay, setHoursPerDay, hoursPerDayStorageError] = useStoredState("migrateqa-hours-day", 8);
+  const storageWarning = [appsStorageError, entriesStorageError, teamStorageError, programTitleStorageError, contingencyStorageError, hoursPerDayStorageError].some(Boolean);
   const [logModal, setLogModal] = useState(null);
   const [bulkEdit, setBulkEdit] = useState(null);
   const [appModal, setAppModal] = useState(null);
@@ -858,9 +858,9 @@ export function App() {
   return (
     <ModalReturnFocusContext.Provider value={lastOutsideDialogFocus}>
     <div className="app-shell">
-      <a href="#workspace-main" className="skip-link">Skip to main content</a>
+      <a href="#workspace-main" className="skip-link" onClick={(event) => { event.preventDefault(); document.getElementById("workspace-main")?.focus(); }}>Skip to main content</a>
       <Sidebar page={page} onNavigate={navigate} />
-      <main id="workspace-main" tabIndex={-1} className="app-main"><Header programTitle={programTitle} onLogTime={() => setLogModal({})} />{pageContent}</main>
+      <main id="workspace-main" tabIndex={-1} className="app-main"><Header programTitle={programTitle} onLogTime={() => setLogModal({})} />{storageWarning && <div role="alert" className="storage-warning"><strong>Browser storage warning.</strong> Some saved records could not be read or saved. Changes may exist only in this tab. Export your currently visible workspace as a JSON backup before closing it. Unreadable original records have not been overwritten.</div>}{pageContent}</main>
       <MobileNav page={page} onNavigate={navigate} />
       {logModal && <LogTimeModal apps={apps} team={team} entry={logModal.entry} onClose={() => setLogModal(null)} onSave={saveEntry} />}
       {bulkEdit && <BulkEditTimeModal count={bulkEdit.ids.length} team={team} onClose={() => setBulkEdit(null)} onSave={(changes) => saveBulkEntries(bulkEdit.ids, changes)} />}

@@ -27,3 +27,35 @@ export function isValidBackupData(data) {
   if ("hoursPerDay" in data && (!finiteNumber(data.hoursPerDay) || data.hoursPerDay <= 0)) return false;
   return true;
 }
+
+/**
+ * Browser persistence must fail closed: unreadable original values stay
+ * untouched. The UI may continue in memory so users can export visible data.
+ */
+export function loadStoredValue(storageProvider, key, fallback) {
+  try {
+    const raw = storageProvider().getItem(key);
+    if (raw === null) return { value: fallback, writable: true, error: null };
+    const value = JSON.parse(raw);
+    if ((Array.isArray(fallback) && !Array.isArray(value)) ||
+        (typeof fallback === "number" && (typeof value !== "number" || !Number.isFinite(value))) ||
+        (typeof fallback === "string" && typeof value !== "string")) {
+      throw new TypeError("Unexpected stored value shape");
+    }
+    return { value, writable: true, error: null };
+  } catch {
+    return { value: fallback, writable: false, error: "unreadable" };
+  }
+}
+
+export function persistStoredValue(storageProvider, key, value) {
+  try {
+    const storage = storageProvider();
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) return false;
+    storage.setItem(key, serialized);
+    return storage.getItem(key) === serialized;
+  } catch {
+    return false;
+  }
+}
