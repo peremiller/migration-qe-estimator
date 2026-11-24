@@ -50,8 +50,11 @@ export function loadStoredValue(storageProvider, key, fallback) {
 
 export function persistStoredValue(storageProvider, key, value) {
   try {
-    storageProvider().setItem(key, JSON.stringify(value));
-    return true;
+    const storage = storageProvider();
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) return false;
+    storage.setItem(key, serialized);
+    return storage.getItem(key) === serialized;
   } catch {
     return false;
   }
