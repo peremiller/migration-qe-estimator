@@ -58,3 +58,10 @@ test("valid JSON with incompatible stored shapes is not replaced with defaults",
     assert.equal(loadStoredValue(() => record, "key", fallback).writable, false);
   }
 });
+
+test("silently rejected writes do not report persistence success", () => {
+  const old = JSON.stringify(["Existing Tester"]);
+  const storage = { getItem: () => old, setItem: () => {} };
+  assert.equal(persistStoredValue(() => storage, "key", ["New Tester"]), false);
+  assert.equal(storage.getItem("key"), old);
+});
